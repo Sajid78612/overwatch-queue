@@ -7,9 +7,11 @@ from PIL import Image
 from pytesseract import *
 import requests
 
+# Replace this path with your path installation
 pytesseract.tesseract_cmd = r'C:\Users\Sajid\AppData\Local\Programs\Tesseract-OCR\tesseract.exe'
 game_status = "SEARCHING"
 counter = 0
+# Enter your discord authorization token (google to find out how)
 header = {
     "authorization": "ENTER_KEY_HERE"
 }
