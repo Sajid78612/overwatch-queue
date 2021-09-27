@@ -4,13 +4,11 @@ Simple script to notify when an Overwatch game is found when in queue.
 
 How to Install:
 
-1) Install https://github.com/UB-Mannheim/tesseract/wiki (Take note of installation path)
-2) Replace pytesseract.tesseract_cmd with your path
-3) Fill in Discord authorization token
+1) Fill in Discord authorization token
 
 How to run:
 1) Run bot.py
-2) CTRL+L to start the notification
+2) Press Start and open Overwatch
 
 Dev Notes:
-* Only works if the Overwatch application is on the foreground otherwise process is sleeping.
+* Keep Overwatch open, when pressing start the program will move it to the foreground.
