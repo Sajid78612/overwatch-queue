@@ -2,20 +2,25 @@ import time
 import keyboard
 import pyautogui
 from pyautogui import *
+import win32gui
 from win32gui import GetWindowText, GetForegroundWindow
 from PIL import Image
+import pytesseract
 from pytesseract import *
 import requests
-import tkinter
+import tkinter as tk
 from tkinter import filedialog, Text
 import os
+import threading as tr
 
 
 def take_screenshot(screensize):
-    if screensize is "1920x1080":
-        return pyautogui.screenshot(region=(810, 50, 300, 100))
-    elif screensize is "2560x1440":
-        return pyautogui.screenshot(region=(1100, 60, 380, 130))
+    if screensize == "1920x1080":
+        screenshot1 = pyautogui.screenshot(region=(810, 50, 300, 100))
+        screenshot1.save("images/img1.png")
+    elif screensize == "2560x1440":
+        screenshot1 = pyautogui.screenshot(region=(1100, 60, 380, 130))
+        screenshot1.save("images/img1.png")
 
 
 def screen_size():
@@ -23,56 +28,144 @@ def screen_size():
     return str(screenshot_sizer.size[0]) + "x" + str(screenshot_sizer.size[1])
 
 
+def discord_notify(payload, header):
+    r = requests.post("https://discord.com/api/v9/channels/891637820714799165/messages",
+                      data=payload,
+                      headers=header)
+
+
+def get_auth_discord():
+    with open("discord_token.txt", "r") as auth:
+        token = auth.readlines()
+    return token[0]
+
+
 # Variables
+global running_thread
+global running
+running = False
+discord_token = "Enter Discord Token Here"
+ow_hwnd = win32gui.FindWindow(None, 'Overwatch')
 resolution = screen_size()
-pytesseract.tesseract_cmd = r'C:\Users\Sajid\AppData\Local\Programs\Tesseract-OCR\tesseract.exe'
+os.environ["TESSDATA_PREFIX"] = "tesseract/tessdata"
+pytesseract.tesseract_cmd = 'tesseract/tesseract.exe'
 game_status = "SEARCHING"
 counter = 0
 # Enter your discord authorization token (google to find out how)
 header = {
-    "authorization": "ENTER_KEY_HERE"
+    "authorization": get_auth_discord()
 }
 
+#############GUI#############
+
+root = tk.Tk()
+root.title("OW Queue Notifier")
+root.iconbitmap("ico/logo.ico")
+
+frame1 = tk.Frame(root, width=200, bg="#263d42", padx=5, pady=5)
+frame1.pack(fill=tk.BOTH, expand=True)
+
+frame2 = tk.Frame(root, width=50, bg="#263d42", padx=5, pady=5)
+frame2.pack(fill=tk.BOTH, expand=True)
+
+lbl_title = tk.Label(
+    master=frame1,
+    text="Overwatch Queue Tool",
+    fg="orange",
+    bg="#263d42",
+    width=20,
+    height=5
+)
+lbl_title.pack()
+
+start_btn = tk.Button(
+    frame2,
+    text="Start",
+    padx=10,
+    pady=5,
+    fg="white",
+    bg="#263d42"
+)
+start_btn.pack()
+
+lbl_primary_alert = tk.Label(
+    master=frame2,
+    fg="red",
+    bg="#263d42",
+    width=25
+)
+lbl_primary_alert.pack(side=tk.BOTTOM)
+
+lbl_secondary_alert = tk.Label(
+    master=frame2,
+    fg="green",
+    bg="#263d42",
+    width=25
+)
+lbl_secondary_alert.pack(side=tk.BOTTOM)
+
+
 # Main Loop
-while True:
-    if keyboard.is_pressed('ctrl+l') and GetWindowText(GetForegroundWindow()) == "Overwatch":
-        while game_status == "SEARCHING":
-            while not GetWindowText(GetForegroundWindow()) == "Overwatch":
-                time.sleep(5)
-            start_time = time.time()
-            screenshot1 = take_screenshot()
-            screenshot1.save(r".\images\img1.png")
-            img1 = Image.open(".\images\img1.png")
-            output1 = pytesseract.image_to_string(img1)
+def start_search():
+    counter = 0
+    lbl_secondary_alert['text'] = ""
+    if not ow_hwnd:
+        lbl_primary_alert['text'] = "Overwatch not found"
+    else:
+        lbl_primary_alert['text'] = ""
+        start_btn['text'] = "Waiting for search"
+        start_btn['fg'] = "blue"
+        start_btn['bg'] = "white"
 
-            if "TIME ELAPSED" in output1:
-                if counter == 0:
-                    payload = {
-                        "content": """---------------------------
+        win32gui.SetForegroundWindow(ow_hwnd)
+        time.sleep(2)
+        # if keyboard.is_pressed('ctrl+l') and GetWindowText(GetForegroundWindow()) == "Overwatch":
+        while True:
+            if win32gui.GetForegroundWindow() == ow_hwnd:
+                start_time = time.time()
+                take_screenshot(resolution)
+                img1 = Image.open("images/img1.png")
+                output1 = pytesseract.image_to_string(img1)
+
+                if "SEARCHING" in output1:
+                    start_btn['text'] = "Searching for a game"
+                    start_btn['fg'] = "white"
+                    start_btn['bg'] = "green"
+                    if counter == 0:
+                        payload = {
+                            "content": """---------------------------
 @here SEARCHING FOR GAME"""
-                    }
-                    r = requests.post("https://discord.com/api/v9/channels/891637820714799165/messages",
-                                      data=payload,
-                                      headers=header)
-                game_status = "SEARCHING"
-                print("SEARCHING FOR A GAME")
-                counter += 1
+                        }
+                        discord_notify(payload, header)
+                    counter += 1
 
-            elif "GAME FOUND" in output1:
-                print("GAME FOUND")
-                payload = {
-                    "content": """@here GAME FOUND"""
-                }
-                r = requests.post("https://discord.com/api/v9/channels/891637820714799165/messages",
-                                  data=payload,
-                                  headers=header)
-                counter = 0
-                break
-            else:
-                end_time = time.time()
-                time_elapsed = (end_time - start_time)
-                if (end_time - start_time) >= 300:
+                elif "GAME FOUND" in output1:
+                    start_btn['text'] = "Game Found!"
+                    start_btn['fg'] = "red"
+                    start_btn['bg'] = "white"
+                    payload = {
+                        "content": """@here GAME FOUND"""
+                    }
+                    discord_notify(payload, header)
                     break
-            time.sleep(0.1)
+
+
+def start(event):
+    global running, running_thread
+    if not running:
+        running_thread = tr.Thread(target=start_search, daemon=True)
+        running_thread.start()
+        running = True
+    if running and not running_thread.is_alive():
+        start_btn['text'] = "Start"
+        start_btn['fg'] = "blue"
+        start_btn['bg'] = "white"
+        running = False
+
+
+start_btn.bind("<Button-1>", start)
 
 # https://discord.com/api/v9/channels/891637820714799165/messages
+
+if __name__ == '__main__':
+    root.mainloop()
