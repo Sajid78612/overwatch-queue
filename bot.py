@@ -12,6 +12,15 @@ import tkinter as tk
 from tkinter import filedialog, Text
 import os
 import threading as tr
+import discord
+import asyncio
+
+
+async def on_ready():
+    print('Logged in as')
+    print(client.user.name)
+    print(client.user.id)
+    print('------')
 
 
 def take_screenshot(screensize):
@@ -32,19 +41,23 @@ def discord_notify(payload, header):
     r = requests.post("https://discord.com/api/v9/channels/891637820714799165/messages",
                       data=payload,
                       headers=header)
+    print(r)
+    print(header)
 
 
 def get_auth_discord():
-    with open("discord_token.txt", "r") as auth:
-        token = auth.readlines()
-    return token[0]
+    # with open("discord_token.txt", "r") as auth:
+    #     token = auth.readlines()
+    # return token[0]
+    return "ENTER_TOKEN_HERE"
 
 
 # Variables
 global running_thread
 global running
 running = False
-discord_token = "Enter Discord Token Here"
+client = discord.Client()
+channel = client.get_channel(891637820714799165)
 ow_hwnd = win32gui.FindWindow(None, 'Overwatch')
 resolution = screen_size()
 os.environ["TESSDATA_PREFIX"] = "tesseract/tessdata"
@@ -53,14 +66,13 @@ game_status = "SEARCHING"
 counter = 0
 # Enter your discord authorization token (google to find out how)
 header = {
-    "authorization": get_auth_discord()
+    "authorization": "Bot " + get_auth_discord()
 }
 
 #############GUI#############
 
 root = tk.Tk()
 root.title("OW Queue Notifier")
-root.iconbitmap("ico/logo.ico")
 
 frame1 = tk.Frame(root, width=200, bg="#263d42", padx=5, pady=5)
 frame1.pack(fill=tk.BOTH, expand=True)
@@ -137,6 +149,7 @@ def start_search():
 @here SEARCHING FOR GAME"""
                         }
                         discord_notify(payload, header)
+                        # channel.send(payload)
                     counter += 1
 
                 elif "GAME FOUND" in output1:
@@ -147,6 +160,8 @@ def start_search():
                         "content": """@here GAME FOUND"""
                     }
                     discord_notify(payload, header)
+                    # payload = """@here GAME FOUND"""
+                    # channel.send(payload)
                     break
 
 
@@ -165,7 +180,16 @@ def start(event):
 
 start_btn.bind("<Button-1>", start)
 
+
 # https://discord.com/api/v9/channels/891637820714799165/messages
 
-if __name__ == '__main__':
+
+async def open_window():
+    await client.wait_until_ready()
+    channel = client.get_channel(891637820714799165)
     root.mainloop()
+
+
+if __name__ == '__main__':
+    client.loop.create_task(open_window())
+    client.run(get_auth_discord())
