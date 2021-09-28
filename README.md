@@ -4,7 +4,7 @@ Simple script to notify when an Overwatch game is found when in queue.
 
 Pre-requistes running the source code:
 
-1) Install tesseract.
+1) Install tesseract in the direcectory of the source code.
 
 Note: The release files has tesseract files in binary, so no need to install if you are simply using that.
 
